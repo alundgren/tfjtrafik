@@ -1,0 +1,137 @@
+﻿@{
+    ViewData["Title"] = "Till och från jobbet";
+}
+
+<div class="row" style="margin-top:10px">
+    <div class="col-md-3">
+        <div class="panel panel-default">
+            <div class="panel-heading" style="height:55px">
+                  <button type="button" class="btn btn-success pull-right" ng-click="refresh()">
+                    <span class='glyphicon glyphicon-refresh'></span>
+                </button>
+            </div>
+            <div class="panel-body">
+                <div class="panel panel-info" ng-repeat="trip in nearbyTrips()">
+                    <div class="panel-heading">
+                        <span style="white-space: pre">{{simplifyLocationName(trip.from.name, trip.to.name)}}</span> »
+                        <span style="white-space: pre">{{simplifyLocationName(trip.to.name, trip.from.name)}}</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-condensed">
+                            <tbody>
+                                <tr ng-repeat="t in current(trip)">
+                                    <td>
+                                        <strong style="white-space: pre">{{t.originCompactDateTime}}</strong> »
+                                        <strong style="white-space: pre">{{t.destinationCompactDateTime}}</strong>
+                                        <br />
+                                        <small style="white-space: pre">Restid {{t.durationInMinutes}} min</small>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer" style="height:55px">
+                <button type="button" class="btn btn-primary pull-right" data-toggle="modal" data-target="#addTrip" ng-click="onShowAddTrip()">
+                    <span class='glyphicon glyphicon-plus'></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="addTrip" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" id="closeAddTrip">&times;</button>
+                <h4 class="modal-title">Lägg till resa</h4>
+            </div>
+            <div class="modal-body">
+                <form name="addtripform" role="form" novalidate ng-show="position.current">
+                    <div class="form-group has-feedback">
+                        <label class="control-label">
+                            Din plats (<a ng-href="https://www.google.com/maps/place/{{position.current.coords.latitude}},{{position.current.coords.longitude}}" target="_blank">på karta</a>)
+                            <span ng-show="position.isGood" class="form-control-feedback glyphicon glyphicon-ok-sign" style="color: #5CB85C;line-height:20px"></span>
+                            <span ng-hide="position.isGood" class="form-control-feedback glyphicon glyphicon-exclamation-sign" style="color: #f0dc75;line-height:20px"></span>
+                        </label>
+                        <p ng-hide="position.isGood">Din plats går bara att bestämma inom {{position.accuracy}} meter vilket kan ge tveksamt resultat.</p>
+                    </div>
+
+                    <div class="form-group" ng-hide="addTrip.from">
+                        <label class="control-label">Från</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" ng-model="addTrip.searchFromLocationInput" placeholder="Plats, t ex T-centralen" required />
+                            <span class="input-group-btn">
+                                <button type="button" class="btn btn-default" ng-click="searchFromLocation()">
+                                    Sök
+                                </button>
+                            </span>    
+                        </div>                                      
+                    </div>
+                    <div class="form-group" ng-show="!addTrip.from && searchFromLocationViableHits().length > 0">
+                        <div class="list-group">
+                            <button type="button" class="list-group-item" ng-repeat="h in searchFromLocationViableHits() | orderBy:'distance'" ng-click="pickFrom(h)">{{h.name}}</button>
+                        </div>
+                    </div>
+                    <div class="form-group" ng-show="!addTrip.from && addTrip.searchFromLocationHits && searchFromLocationViableHits().length == 0">
+                        <div class="form-group has-feedback">
+                            <p>Inga träffar</p>
+                        </div>
+                    </div>
+                    <div class="form-group has-feedback" ng-show="addTrip.from">
+                        <label class="control-label">
+                            Från
+                        </label>
+                        <p class="form-control-static">
+                            {{addTrip.from.name}}(<a ng-href="https://www.google.com/maps/place/{{addTrip.from.lat}},{{addTrip.from.lon}}" target="_blank">på karta</a>)
+                            <span class="form-control-feedback glyphicon glyphicon-ok-sign" style="color: #5CB85C;line-height:20px"></span>
+                        </p>
+                    </div>
+
+                    <div class="form-group" ng-hide="!addTrip.from || addTrip.to">
+                        <label class="control-label">Till</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" ng-model="addTrip.searchToLocationInput" placeholder="Plats, t ex T-centralen" required />
+                            <span class="input-group-btn">
+                                <button type="button" class="btn btn-default" ng-click="searchToLocation()">
+                                    Sök
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-group" ng-show="!addTrip.to && searchToLocationViableHits().length > 0">
+                        <div class="list-group">
+                            <button type="button" class="list-group-item" ng-repeat="h in searchToLocationViableHits() | orderBy:'distance'" ng-click="pickTo(h)">{{h.name}}</button>
+                        </div>
+                    </div>
+                    <div class="form-group" ng-show="!addTrip.to && addTrip.searchToLocationHits && searchToLocationViableHits().length == 0">
+                        <div class="form-group has-feedback">
+                            <p>Inga träffar</p>
+                        </div>
+                    </div>
+                    <div class="form-group has-feedback" ng-show="addTrip.to">
+                        <label class="control-label">
+                            Till
+                        </label>
+                        <p class="form-control-static">
+                            {{addTrip.to.name}}(<a ng-href="https://www.google.com/maps/place/{{addTrip.to.lat}},{{addTrip.to.lon}}" target="_blank">på karta</a>)
+                            <span class="form-control-feedback glyphicon glyphicon-ok-sign" style="color: #5CB85C;line-height:20px"></span>
+                        </p>
+                    </div>
+                    <button type="submit" class="btn btn-default" ng-show="addTrip.from && addTrip.to" ng-click="addTripNow()">Lägg till</button>
+                </form>
+                <form novalidate ng-show="position.error">
+                    <div class="form-group has-feedback">
+                        <label class="control-label">
+                            Din plats 
+                            <span  class="form-control-feedback glyphicon glyphicon-remove-sign" style="color: #a94442;line-height:20px"></span>
+                        </label>
+                    </div>
+                    <p>Det gick inte att hämta din plats. GPS avstängd kanske?</p>
+                </form>                
+            </div>
+        </div>
+    </div>
+</div>
